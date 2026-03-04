@@ -39,7 +39,6 @@ export function useStore() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     if (code && strava.clientId && strava.clientSecret) {
-      window.history.replaceState({}, '', window.location.pathname);
       setActiveView('settings');
     }
   }, []);
