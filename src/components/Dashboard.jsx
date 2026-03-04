@@ -26,16 +26,18 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
     [runs, thirtyDaysAgo]
   );
 
-  // VDOT progress chart (last 30 days)
+  // VDOT progress chart — only tempo/interval/race runs give meaningful estimates
   const chartData = useMemo(() =>
-    recentRuns.map(r => {
-      const estimated10k = predictRaceTime(r.timeSeconds, r.distanceKm, 10);
-      const vdot = vdotFrom10k(estimated10k);
-      return {
-        date: new Date(r.date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
-        vdot: Math.round(vdot * 10) / 10,
-      };
-    }),
+    recentRuns
+      .filter(r => ['tempo', 'interval', 'race'].includes(r.type) || r.distanceKm >= 8)
+      .map(r => {
+        const estimated10k = predictRaceTime(r.timeSeconds, r.distanceKm, 10);
+        const vdot = vdotFrom10k(estimated10k);
+        return {
+          date: new Date(r.date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
+          vdot: Math.round(vdot * 10) / 10,
+        };
+      }),
     [recentRuns]
   );
 
