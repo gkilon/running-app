@@ -91,27 +91,7 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
         </div>
       </div>
 
-      {/* Training paces */}
-      <div className="section-title">קצבי אימון מומלצים (Jack Daniels)</div>
-      <div className="paces-grid">
-        {[
-          { key: 'easy',      label: 'קצב קל',       desc: 'רוב הריצות — 80%', color: '#22c55e' },
-          { key: 'threshold', label: 'טמפו / סף',     desc: 'ריצות טמפו',        color: '#f59e0b' },
-          { key: 'interval',  label: 'אינטרוול',       desc: 'אינטרוולים',        color: '#ef4444' },
-          { key: 'marathon',  label: 'קצב מרתון',     desc: 'ריצות ארוכות',      color: '#3b82f6' },
-        ].map(({ key, label, desc, color }) => (
-          <div className="pace-card" key={key} style={{ borderTop: `3px solid ${color}` }}>
-            <div className="pace-label" style={{ color }}>{label}</div>
-            <div className="pace-value">
-              {formatPace(paces[key].min)}–{formatPace(paces[key].max)}
-              <span className="pace-unit"> /ק"מ</span>
-            </div>
-            <div className="pace-desc">{desc}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Last 30 days progress */}
+      {/* Last 30 days progress — charts first */}
       {recentRuns.length > 0 && (
         <>
           <div className="section-title">חודש אחרון — {recentRuns.length} ריצות · {Math.round(recentRuns.reduce((s, r) => s + r.distanceKm, 0) * 10) / 10} ק"מ</div>
@@ -156,6 +136,26 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
           )}
         </>
       )}
+
+      {/* Training paces */}
+      <div className="section-title">קצבי אימון מומלצים (Jack Daniels)</div>
+      <div className="paces-grid">
+        {[
+          { key: 'easy',      label: 'קצב קל',       desc: 'רוב הריצות — 80%', color: '#22c55e' },
+          { key: 'threshold', label: 'טמפו / סף',     desc: 'ריצות טמפו',        color: '#f59e0b' },
+          { key: 'interval',  label: 'אינטרוול',       desc: 'אינטרוולים',        color: '#ef4444' },
+          { key: 'marathon',  label: 'קצב מרתון',     desc: 'ריצות ארוכות',      color: '#3b82f6' },
+        ].map(({ key, label, desc, color }) => (
+          <div className="pace-card" key={key} style={{ borderTop: `3px solid ${color}` }}>
+            <div className="pace-label" style={{ color }}>{label}</div>
+            <div className="pace-value">
+              {formatPace(paces[key].min)}–{formatPace(paces[key].max)}
+              <span className="pace-unit"> /ק"מ</span>
+            </div>
+            <div className="pace-desc">{desc}</div>
+          </div>
+        ))}
+      </div>
 
       {/* This week */}
       {plan ? (
