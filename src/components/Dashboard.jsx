@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPace, formatTime, getTrainingPaces } from '../utils/daniels';
 
 const INTENSITY_COLORS = {
@@ -24,16 +24,6 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
       .filter(r => r.distanceKm && r.timeSeconds && new Date(r.date) >= thirtyDaysAgo)
       .sort((a, b) => new Date(a.date) - new Date(b.date)),
     [runs, thirtyDaysAgo]
-  );
-
-  // Pace trend chart (sec/km → displayed as mm:ss)
-  const chartData = useMemo(() =>
-    recentRuns.map(r => ({
-      date: new Date(r.date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
-      pace: Math.round(r.timeSeconds / r.distanceKm),
-      type: r.type,
-    })),
-    [recentRuns]
   );
 
   // Weekly km chart (last 30 days, grouped by week)
@@ -113,27 +103,6 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
             </div>
           )}
 
-          {chartData.length >= 2 && (
-            <div className="chart-wrap">
-              <div className="chart-label">קצב ממוצע לריצה (נמוך = מהיר יותר)</div>
-              <ResponsiveContainer width="100%" height={160}>
-                <LineChart data={chartData}>
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
-                  <YAxis
-                    domain={['auto', 'auto']}
-                    reversed
-                    tick={{ fontSize: 11, fill: '#888' }}
-                    tickFormatter={v => formatPace(v)}
-                  />
-                  <Tooltip
-                    formatter={(v) => [formatPace(v) + '/ק"מ', 'קצב']}
-                    contentStyle={{ background: '#1e293b', border: 'none', color: '#fff', borderRadius: 8 }}
-                  />
-                  <Line type="monotone" dataKey="pace" stroke="#4f86f7" strokeWidth={2} dot={{ r: 4, fill: '#4f86f7' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
         </>
       )}
 
