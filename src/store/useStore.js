@@ -43,6 +43,17 @@ export function useStore() {
     }
   }, []);
 
+  // Auto-sync Strava on load (at most once per day)
+  useEffect(() => {
+    if (!strava.accessToken) return;
+    const lastSync = saved.lastStravaSync || 0;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    if (Date.now() - lastSync < oneDayMs) return;
+    syncStravaActivities(strava.accessToken).then(() => {
+      save({ ...load(), lastStravaSync: Date.now() });
+    });
+  }, []);
+
   const currentVdot = vdotFrom10k(parseTime(performance.current10kTime));
   const targetVdot  = vdotFrom10k(parseTime(goal.target10kTime));
 
@@ -88,7 +99,8 @@ export function useStore() {
     setStravaLoading(true);
     setStravaError(null);
     try {
-      const activities = await fetchStravaActivities(token);
+      const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      const activities = await fetchStravaActivities(token, 1, 50, thirtyDaysAgo);
       const newRuns = activities.map(stravaActivityToRun);
       setRuns(prev => {
         const existingIds = new Set(prev.map(r => r.id));

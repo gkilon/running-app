@@ -52,12 +52,10 @@ export async function refreshStravaToken(clientId, clientSecret, refreshToken) {
   return res.json();
 }
 
-export async function fetchStravaActivities(accessToken, page = 1, perPage = 50) {
-  const params = new URLSearchParams({
-    page,
-    per_page: perPage,
-    type: 'Run',
-  });
+export async function fetchStravaActivities(accessToken, page = 1, perPage = 50, afterTimestamp = null) {
+  const query = { page, per_page: perPage, type: 'Run' };
+  if (afterTimestamp) query.after = afterTimestamp;
+  const params = new URLSearchParams(query);
   const res = await fetch(`${STRAVA_API}/athlete/activities?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });

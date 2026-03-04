@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { vdotFrom10k, parseTime, formatPace, formatTime, getTrainingPaces, predictRaceTime } from '../utils/daniels';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { vdotFrom10k, formatPace, formatTime, getTrainingPaces, predictRaceTime } from '../utils/daniels';
 
 const INTENSITY_COLORS = {
   easy:      '#22c55e',
@@ -12,25 +12,47 @@ const INTENSITY_COLORS = {
 export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, onNavigate, onGeneratePlan }) {
   const paces = useMemo(() => getTrainingPaces(currentVdot), [currentVdot]);
 
-  // Chart data: VDOT progress from runs
-  const chartData = useMemo(() => {
-    const sorted = [...runs]
-      .filter(r => r.distanceKm && r.timeSeconds)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(-20);
+  const thirtyDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  }, []);
 
-    return sorted.map(r => {
-      const pace = r.timeSeconds / r.distanceKm;
-      // Estimate 10k time from run using Riegel
+  // Last 30 days runs sorted by date
+  const recentRuns = useMemo(() =>
+    [...runs]
+      .filter(r => r.distanceKm && r.timeSeconds && new Date(r.date) >= thirtyDaysAgo)
+      .sort((a, b) => new Date(a.date) - new Date(b.date)),
+    [runs, thirtyDaysAgo]
+  );
+
+  // VDOT progress chart (last 30 days)
+  const chartData = useMemo(() =>
+    recentRuns.map(r => {
       const estimated10k = predictRaceTime(r.timeSeconds, r.distanceKm, 10);
       const vdot = vdotFrom10k(estimated10k);
       return {
         date: new Date(r.date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
         vdot: Math.round(vdot * 10) / 10,
-        pace: Math.round(pace),
       };
+    }),
+    [recentRuns]
+  );
+
+  // Weekly km chart (last 30 days, grouped by week)
+  const weeklyData = useMemo(() => {
+    const weeks = {};
+    recentRuns.forEach(r => {
+      const d = new Date(r.date);
+      // Get Monday of that week
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - ((day + 6) % 7));
+      const key = monday.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+      weeks[key] = (weeks[key] || 0) + r.distanceKm;
     });
-  }, [runs]);
+    return Object.entries(weeks).map(([week, km]) => ({ week, km: Math.round(km * 10) / 10 }));
+  }, [recentRuns]);
 
   const targetVdotLine = Math.round(targetVdot * 10) / 10;
 
@@ -94,24 +116,45 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
         ))}
       </div>
 
-      {/* VDOT Progress chart */}
-      {chartData.length >= 2 && (
+      {/* Last 30 days progress */}
+      {recentRuns.length > 0 && (
         <>
-          <div className="section-title">התקדמות VDOT</div>
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={chartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
-                <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#888' }} />
-                <Tooltip
-                  formatter={(v) => [v, 'VDOT']}
-                  contentStyle={{ background: '#1e293b', border: 'none', color: '#fff', borderRadius: 8 }}
-                />
-                <ReferenceLine y={targetVdotLine} stroke="#ef4444" strokeDasharray="4 2" label={{ value: 'יעד', fill: '#ef4444', fontSize: 11 }} />
-                <Line type="monotone" dataKey="vdot" stroke="#4f86f7" strokeWidth={2} dot={{ r: 4, fill: '#4f86f7' }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="section-title">חודש אחרון — {recentRuns.length} ריצות · {Math.round(recentRuns.reduce((s, r) => s + r.distanceKm, 0) * 10) / 10} ק"מ</div>
+
+          {weeklyData.length >= 1 && (
+            <div className="chart-wrap">
+              <div className="chart-label">ק"מ לפי שבוע</div>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={weeklyData}>
+                  <XAxis dataKey="week" tick={{ fontSize: 11, fill: '#888' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#888' }} />
+                  <Tooltip
+                    formatter={(v) => [v + ' ק"מ', 'נפח']}
+                    contentStyle={{ background: '#1e293b', border: 'none', color: '#fff', borderRadius: 8 }}
+                  />
+                  <Bar dataKey="km" fill="#4f86f7" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {chartData.length >= 2 && (
+            <div className="chart-wrap">
+              <div className="chart-label">התקדמות VDOT</div>
+              <ResponsiveContainer width="100%" height={160}>
+                <LineChart data={chartData}>
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
+                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#888' }} />
+                  <Tooltip
+                    formatter={(v) => [v, 'VDOT']}
+                    contentStyle={{ background: '#1e293b', border: 'none', color: '#fff', borderRadius: 8 }}
+                  />
+                  <ReferenceLine y={targetVdotLine} stroke="#ef4444" strokeDasharray="4 2" label={{ value: 'יעד', fill: '#ef4444', fontSize: 11 }} />
+                  <Line type="monotone" dataKey="vdot" stroke="#4f86f7" strokeWidth={2} dot={{ r: 4, fill: '#4f86f7' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </>
       )}
 
