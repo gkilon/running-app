@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { vdotFrom10k, formatPace, formatTime, getTrainingPaces, predictRaceTime } from '../utils/daniels';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatPace, formatTime, getTrainingPaces } from '../utils/daniels';
 
 const INTENSITY_COLORS = {
   easy:      '#22c55e',
@@ -26,18 +26,13 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
     [runs, thirtyDaysAgo]
   );
 
-  // VDOT progress chart — only tempo/interval/race runs give meaningful estimates
+  // Pace trend chart (sec/km → displayed as mm:ss)
   const chartData = useMemo(() =>
-    recentRuns
-      .filter(r => ['tempo', 'interval', 'race'].includes(r.type) || r.distanceKm >= 8)
-      .map(r => {
-        const estimated10k = predictRaceTime(r.timeSeconds, r.distanceKm, 10);
-        const vdot = vdotFrom10k(estimated10k);
-        return {
-          date: new Date(r.date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
-          vdot: Math.round(vdot * 10) / 10,
-        };
-      }),
+    recentRuns.map(r => ({
+      date: new Date(r.date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
+      pace: Math.round(r.timeSeconds / r.distanceKm),
+      type: r.type,
+    })),
     [recentRuns]
   );
 
@@ -55,8 +50,6 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
     });
     return Object.entries(weeks).map(([week, km]) => ({ week, km: Math.round(km * 10) / 10 }));
   }, [recentRuns]);
-
-  const targetVdotLine = Math.round(targetVdot * 10) / 10;
 
   // Week progress
   const currentWeek = useMemo(() => {
@@ -142,17 +135,21 @@ export default function Dashboard({ goal, runs, plan, currentVdot, targetVdot, o
 
           {chartData.length >= 2 && (
             <div className="chart-wrap">
-              <div className="chart-label">התקדמות VDOT</div>
+              <div className="chart-label">קצב ממוצע לריצה (נמוך = מהיר יותר)</div>
               <ResponsiveContainer width="100%" height={160}>
                 <LineChart data={chartData}>
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} />
-                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#888' }} />
+                  <YAxis
+                    domain={['auto', 'auto']}
+                    reversed
+                    tick={{ fontSize: 11, fill: '#888' }}
+                    tickFormatter={v => formatPace(v)}
+                  />
                   <Tooltip
-                    formatter={(v) => [v, 'VDOT']}
+                    formatter={(v) => [formatPace(v) + '/ק"מ', 'קצב']}
                     contentStyle={{ background: '#1e293b', border: 'none', color: '#fff', borderRadius: 8 }}
                   />
-                  <ReferenceLine y={targetVdotLine} stroke="#ef4444" strokeDasharray="4 2" label={{ value: 'יעד', fill: '#ef4444', fontSize: 11 }} />
-                  <Line type="monotone" dataKey="vdot" stroke="#4f86f7" strokeWidth={2} dot={{ r: 4, fill: '#4f86f7' }} />
+                  <Line type="monotone" dataKey="pace" stroke="#4f86f7" strokeWidth={2} dot={{ r: 4, fill: '#4f86f7' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
